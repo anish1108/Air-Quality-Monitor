@@ -1,55 +1,54 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 
-// WiFi credentials
+// Wi-Fi credentials
 const char* ssid = "System Administrator";
 const char* password = "123123123";
 
 // MQTT Server
-const char* mqtt_server = "test.mosquitto.org"; // Example public MQTT broker
+// const char* mqtt_server = "mqtt.arduino.cc";
+const char* mqtt_server = "broker.hivemq.com";
 const int mqtt_port = 1883;
 
 // Variables
-const int airQualityPin = 34; // Analog pin connected to MQ-7
+const int airQualityPin = 34; // Analog pin connected to MQ-7 sensor
 WiFiClient espClient;
 PubSubClient client(espClient);
 
 void setup() {
-  Serial.println("started");
   Serial.begin(115200);
-  Serial.println("2222");
 
-  // Initialize WiFi
+  // Connect to Wi-Fi
   connectToWiFi();
-  Serial.println("3333");
 
-  // Set MQTT Server
+  // Set MQTT server
   client.setServer(mqtt_server, mqtt_port);
-  Serial.println("4444");
+
+  // Connect to MQTT broker
+  connectToMQTT();
 
   // Initialize the Air Quality Sensor
   pinMode(airQualityPin, INPUT);
-  Serial.println("5555");
 }
 
 void loop() {
   if (!client.connected()) {
-    reconnectMQTT();
+    connectToMQTT(); // Reconnect if disconnected
   }
   client.loop();
 
   // Read air quality
   int sensorValue = analogRead(airQualityPin);
-  float voltage = sensorValue * (3.3 / 4095.0); // Convert ADC to voltage
+  float voltage = sensorValue * (3.3 / 4095.0); // Convert ADC value to voltage
   Serial.print("Air Quality Voltage: ");
   Serial.println(voltage);
 
-  // Send data to MQTT
+  // Publish air quality data to MQTT
   char message[50];
-  snprintf(message, 50, "Air Quality Voltage: %.2f", voltage);
+  snprintf(message, 50, "Air Quality Voltage: %.2f V", voltage);
   client.publish("air_quality/data", message);
 
-  delay(2000);
+  delay(2000); // Publish data every 2 seconds
 }
 
 void connectToWiFi() {
@@ -62,16 +61,15 @@ void connectToWiFi() {
   Serial.println("\nConnected to Wi-Fi");
 }
 
-void reconnectMQTT() {
+void connectToMQTT() {
   while (!client.connected()) {
-    Serial.print("Connecting to MQTT...");
-    if (client.connect("ESP32Client")) {
-      Serial.println("connected");
-      client.subscribe("air_quality/data");
+    Serial.println("Connecting to MQTT...");
+    if (client.connect("ESP32Client_12345")) {
+      Serial.println("Connected to MQTT!");
+      client.subscribe("air_quality/data"); 
     } else {
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
+      Serial.print("Failed, rc=");
+      Serial.println(client.state());
       delay(5000);
     }
   }
